@@ -57,11 +57,11 @@ func EnqueJob(repository string, branch string, uuid string, jobChan chan Job) (
 
 func worker(jobChan chan Job, statusMap StatusMap, outputMap OutputMap) {
 	for job := range jobChan {
-		process(job, statusMap, outputMap)
+		process(&job, statusMap, outputMap)
 	}
 }
 
-func process(job Job, statusMap StatusMap, outputMap OutputMap) {
+func process(job *Job, statusMap StatusMap, outputMap OutputMap) {
 	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
 
