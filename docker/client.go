@@ -21,7 +21,7 @@ func RunDockerFile(path string, id string) (passed bool, output string, err erro
 	stdout, err := cmd.Output()
 
 	if err != nil {
-		return false, "", err
+		return false, string(stdout), err
 	}
 
 	return true, string(stdout), nil
