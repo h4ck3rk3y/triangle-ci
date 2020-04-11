@@ -4,37 +4,23 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/h4ck3rk3y/triangle-ci/docker"
 	"github.com/h4ck3rk3y/triangle-ci/git"
+	"github.com/h4ck3rk3y/triangle-ci/workers"
 )
 
 type newCommitForm struct {
 	Repository string `json:"repository_url"`
 }
 
-// Job ...
-type Job struct {
-	Repository string `json:"repository_url"`
-	Status     string `json:"status"`
-	Branch     string `json:"branch"`
-	Commit     string `json:"commit"`
-	UUID       string `json:"uuid"`
-	Path       string `json:"path"`
-}
-
-var statusMap map[string]string
-var jobMap map[string]Job
-var outputMap map[string]string
-var jobChan chan Job
-
 const (
-	queued      string = "Queued"
-	failed             = "Failed"
-	processing         = "Processing"
-	testsfailed        = "TestsFailed"
-	completed          = "Completed"
-	tryLater           = "Queue is full try later"
+	JobQueueSize = 10,
+	WorkerLimit = 4
 )
+
+var statusMap workers.StatusMap
+var jobMap map[string]workers.Job
+var outputMap workers.OutputMap
+var jobChan chan workers.Job
 
 func newCommitHandler(c *gin.Context) {
 	var form newCommitForm
@@ -46,16 +32,15 @@ func newCommitHandler(c *gin.Context) {
 	}
 
 	uuid := git.CreateUUID()
+
+	status, job := workers.EnqueJob(form.Repository, uuid, jobChan)
+	statusMap[uuid] = status
+	jobMap[uuid] = job
 	outputMap[uuid] = ""
 
-	status, job := enqueJob(form.Repository, uuid)
-	jobMap[uuid] = job
-
-	if status {
-		statusMap[uuid] = queued
+	if status == workers.Queued {
 		c.JSON(http.StatusOK, gin.H{"message": "build queued", "id": uuid})
 	} else {
-		statusMap[uuid] = tryLater
 		c.JSON(http.StatusOK, gin.H{"message": "queue is full try later", "id": uuid})
 	}
 }
@@ -82,60 +67,18 @@ func outputCheck(c *gin.Context) {
 	}
 }
 
-func enqueJob(Repository string, uuid string) (bool, Job) {
-	job := Job{Repository, "", "", "", uuid, ""}
-	select {
-	case jobChan <- job:
-		return true, job
-	default:
-		return false, job
-	}
-}
-
-func worker() {
-	for job := range jobChan {
-		process(job)
-	}
-}
-
-func createWorkerPool(limit int) {
-	for i := 0; i < limit; i++ {
-		go worker()
-	}
-}
-
-func process(job Job) {
-	path, err := git.Clone(job.Repository, job.UUID)
-	job.Path = path
-
-	if err != nil {
-		statusMap[job.UUID] = failed
-	} else {
-		statusMap[job.UUID] = processing
-		status, output, err := docker.RunDockerFile(path, job.UUID)
-		outputMap[job.UUID] = output
-		if err != nil || status == false {
-			statusMap[job.UUID] = testsfailed
-		} else if status == true {
-			statusMap[job.UUID] = completed
-		}
-	}
-
-	job.Status = statusMap[job.UUID]
-}
-
 func channelSize(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"current": len(jobChan), "capacity": 10})
 }
 
 func main() {
 
-	statusMap = make(map[string]string)
-	outputMap = make(map[string]string)
-	jobMap = make(map[string]Job)
+	statusMap = make(workers.StatusMap)
+	outputMap = make(workers.OutputMap)
+	jobMap = make(map[string]workers.Job)
 
-	jobChan = make(chan Job, 10)
-	createWorkerPool(4)
+	jobChan = make(chan workers.Job, JobQueueSize)
+	workers.CreateWorkerPool(WorkerLimit, jobChan, statusMap, outputMap)
 
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
