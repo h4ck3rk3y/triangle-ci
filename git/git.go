@@ -6,17 +6,20 @@ import (
 	"log"
 	"os"
 
+	"gopkg.in/src-d/go-git.v4/plumbing"
+
 	"gopkg.in/src-d/go-git.v4"
 )
 
 // Clone ...
-func Clone(url string, uuid string) (path string, err error) {
+func Clone(url string, branch string, uuid string) (path string, err error) {
 
 	path = CreatePath(uuid)
 
 	_, err = git.PlainClone(path, false, &git.CloneOptions{
-		URL:      url,
-		Progress: os.Stdout,
+		URL:           url,
+		Progress:      os.Stdout,
+		ReferenceName: plumbing.ReferenceName(branch),
 	})
 
 	if err != nil {

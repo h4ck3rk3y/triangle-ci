@@ -45,8 +45,8 @@ func CreateWorkerPool(limit int, jobChan chan Job, statusMap StatusMap, outputMa
 }
 
 // EnqueJob ...
-func EnqueJob(Repository string, uuid string, jobChan chan Job) (string, Job) {
-	job := Job{Repository, "", "", "", uuid, ""}
+func EnqueJob(repository string, branch string, uuid string, jobChan chan Job) (string, Job) {
+	job := Job{repository, "", branch, "", uuid, ""}
 	select {
 	case jobChan <- job:
 		return Queued, job
@@ -62,7 +62,7 @@ func worker(jobChan chan Job, statusMap StatusMap, outputMap OutputMap) {
 }
 
 func process(job Job, statusMap StatusMap, outputMap OutputMap) {
-	path, err := git.Clone(job.Repository, job.UUID)
+	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
 
 	if err != nil {

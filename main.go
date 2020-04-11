@@ -10,10 +10,13 @@ import (
 
 type newCommitForm struct {
 	Repository string `json:"repository_url"`
+	Branch     string `json:"branch"`
 }
 
 const (
-	JobQueueSize = 10,
+	// JobQueueSize ...
+	JobQueueSize int = 10
+	// WorkerLimit ...
 	WorkerLimit = 4
 )
 
@@ -33,7 +36,7 @@ func newCommitHandler(c *gin.Context) {
 
 	uuid := git.CreateUUID()
 
-	status, job := workers.EnqueJob(form.Repository, uuid, jobChan)
+	status, job := workers.EnqueJob(form.Repository, form.Branch, uuid, jobChan)
 	statusMap[uuid] = status
 	jobMap[uuid] = job
 	outputMap[uuid] = ""
