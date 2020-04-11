@@ -10,9 +10,8 @@ import (
 )
 
 // Clone ...
-func Clone(url string) (path string, uuid string, err error) {
+func Clone(url string, uuid string) (path string, err error) {
 
-	uuid = CreateUUID()
 	path = CreatePath(uuid)
 
 	_, err = git.PlainClone(path, false, &git.CloneOptions{
@@ -21,12 +20,12 @@ func Clone(url string) (path string, uuid string, err error) {
 	})
 
 	if err != nil {
-		return "", "failure while cloning", err
+		return "failure while cloning", err
 	}
 
 	fmt.Println("Cloning finished succesfully")
 
-	return path, uuid, nil
+	return path, nil
 }
 
 // GetCIFile ...

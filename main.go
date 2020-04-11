@@ -12,22 +12,28 @@ type newCommitForm struct {
 	Repository string `json:"repository_url"`
 }
 
-// Status ...
-type Status struct {
-	Path   string `json:"path"`
-	Status string `json:"status"`
-	ID     string `json:"id"`
+// Job ...
+type Job struct {
+	Repository string `json:"repository_url"`
+	Status     string `json:"status"`
+	Branch     string `json:"branch"`
+	Commit     string `json:"commit"`
+	UUID       string `json:"uuid"`
+	Path       string `json:"path"`
 }
 
-var statusMap map[string]Status
-var urlIDMap map[string]string
+var statusMap map[string]string
+var jobMap map[string]Job
 var outputMap map[string]string
+var jobChan chan Job
 
 const (
-	failed      string = "Failed"
+	queued      string = "Queued"
+	failed             = "Failed"
 	processing         = "Processing"
 	testsfailed        = "TestsFailed"
 	completed          = "Completed"
+	tryLater           = "Queue is full try later"
 )
 
 func newCommitHandler(c *gin.Context) {
@@ -39,32 +45,26 @@ func newCommitHandler(c *gin.Context) {
 		return
 	}
 
-	path, uuid, err := git.Clone(form.Repository)
+	uuid := git.CreateUUID()
+	outputMap[uuid] = ""
 
-	if err != nil {
-		statusMap[uuid] = Status{path, failed, uuid}
+	status, job := enqueJob(form.Repository, uuid)
+	jobMap[uuid] = job
+
+	if status {
+		statusMap[uuid] = queued
+		c.JSON(http.StatusOK, gin.H{"message": "build queued", "id": uuid})
 	} else {
-		statusMap[uuid] = Status{path, processing, uuid}
-		// @ToDo put this on a separate worker
-		status, output, err := docker.RunDockerFile(path, uuid)
-		outputMap[uuid] = output
-		if err != nil || status == false {
-			statusMap[uuid] = Status{path, testsfailed, uuid}
-		} else if status == true {
-			statusMap[uuid] = Status{path, completed, uuid}
-		}
+		statusMap[uuid] = tryLater
+		c.JSON(http.StatusOK, gin.H{"message": "queue is full try later", "id": uuid})
 	}
-
-	urlIDMap[form.Repository] = uuid
-
-	c.JSON(http.StatusOK, gin.H{"message": "your build is under progress", "id": uuid})
 }
 
 func statusCheck(c *gin.Context) {
 	id := c.Query("id")
 
 	if status, ok := statusMap[id]; ok {
-		c.JSON(http.StatusOK, gin.H{"status": status.Status})
+		c.JSON(http.StatusOK, gin.H{"status": status})
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"message": "invalid id"})
 		c.Abort()
@@ -82,11 +82,61 @@ func outputCheck(c *gin.Context) {
 	}
 }
 
+func enqueJob(Repository string, uuid string) (bool, Job) {
+	job := Job{Repository, "", "", "", uuid, ""}
+	select {
+	case jobChan <- job:
+		return true, job
+	default:
+		return false, job
+	}
+}
+
+func worker() {
+	for job := range jobChan {
+		process(job)
+	}
+}
+
+func createWorkerPool(limit int) {
+	for i := 0; i < limit; i++ {
+		go worker()
+	}
+}
+
+func process(job Job) {
+	path, err := git.Clone(job.Repository, job.UUID)
+	job.Path = path
+
+	if err != nil {
+		statusMap[job.UUID] = failed
+	} else {
+		statusMap[job.UUID] = processing
+		status, output, err := docker.RunDockerFile(path, job.UUID)
+		outputMap[job.UUID] = output
+		if err != nil || status == false {
+			statusMap[job.UUID] = testsfailed
+		} else if status == true {
+			statusMap[job.UUID] = completed
+		}
+	}
+
+	job.Status = statusMap[job.UUID]
+}
+
+func channelSize(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"current": len(jobChan), "capacity": 10})
+}
+
 func main() {
 
-	statusMap = make(map[string]Status)
-	urlIDMap = make(map[string]string)
+	statusMap = make(map[string]string)
 	outputMap = make(map[string]string)
+	jobMap = make(map[string]Job)
+
+	jobChan = make(chan Job, 10)
+	createWorkerPool(4)
+
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -96,5 +146,6 @@ func main() {
 	r.POST("/push/", newCommitHandler)
 	r.GET("/status", statusCheck)
 	r.GET("/output", outputCheck)
+	r.GET("/stats", channelSize)
 	r.Run()
 }
