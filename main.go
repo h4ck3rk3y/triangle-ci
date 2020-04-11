@@ -124,6 +124,10 @@ func process(job Job) {
 	job.Status = statusMap[job.UUID]
 }
 
+func channelSize(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"current": len(jobChan), "capacity": 10})
+}
+
 func main() {
 
 	statusMap = make(map[string]string)
@@ -142,5 +146,6 @@ func main() {
 	r.POST("/push/", newCommitHandler)
 	r.GET("/status", statusCheck)
 	r.GET("/output", outputCheck)
+	r.GET("/stats", channelSize)
 	r.Run()
 }
