@@ -1,6 +1,7 @@
 package git
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -9,21 +10,23 @@ import (
 )
 
 // Clone ...
-func Clone(url string) (path string, err error) {
+func Clone(url string) (path string, uuid string, err error) {
 
-	_, err = git.PlainClone("/tmp/foo", false, &git.CloneOptions{
+	uuid = CreateUUID()
+	path = CreatePath(uuid)
+
+	_, err = git.PlainClone(path, false, &git.CloneOptions{
 		URL:      url,
 		Progress: os.Stdout,
 	})
 
 	if err != nil {
-		fmt.Println("Something failed while cloning")
-		return "", err
+		return "", "failure while cloning", err
 	}
 
 	fmt.Println("Cloning finished succesfully")
 
-	return "/tmp/foo", nil
+	return path, uuid, nil
 }
 
 // GetCIFile ...
@@ -39,4 +42,22 @@ func GetCIFile(path string) (dockerfile string, err error) {
 	}
 
 	return path, err
+}
+
+// CreateUUID ...
+func CreateUUID() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	uuid := fmt.Sprintf("%x-%x-%x-%x-%x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+
+	return uuid
+}
+
+// CreatePath ...
+func CreatePath(uuid string) (path string) {
+	return "/tmp/" + uuid
 }
