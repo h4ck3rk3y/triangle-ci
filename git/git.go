@@ -1,6 +1,7 @@
 package git
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"log"
@@ -12,23 +13,25 @@ import (
 )
 
 // Clone ...
-func Clone(url string, branch string, uuid string) (path string, err error) {
+func Clone(url string, branch string, uuid string) (path string, output string, err error) {
 
 	path = CreatePath(uuid)
 
+	var buffer bytes.Buffer
+
 	_, err = git.PlainClone(path, false, &git.CloneOptions{
 		URL:           url,
-		Progress:      os.Stdout,
+		Progress:      &buffer,
 		ReferenceName: plumbing.ReferenceName(branch),
 	})
 
 	if err != nil {
-		return "failure while cloning", err
+		return "", "failure while cloning", err
 	}
 
-	fmt.Println("Cloning finished succesfully")
-
-	return path, nil
+	log.Println("Cloning finished succesfully")
+	output = buffer.String()
+	return path, output, nil
 }
 
 // GetCIFile ...

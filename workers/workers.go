@@ -7,13 +7,14 @@ import (
 
 // Job ...
 type Job struct {
-	Repository string `json:"repository_url"`
-	Status     string `json:"status"`
-	Branch     string `json:"branch"`
-	Commit     string `json:"commit"`
-	UUID       string `json:"uuid"`
-	Path       string `json:"path"`
-	Output     string `json:"output"`
+	Repository  string `json:"repository_url"`
+	Status      string `json:"status"`
+	Branch      string `json:"branch"`
+	Commit      string `json:"commit"`
+	UUID        string `json:"uuid"`
+	Path        string `json:"path"`
+	Output      string `json:"output"`
+	CloneOutput string `json:"clone_output"`
 }
 
 const (
@@ -42,7 +43,7 @@ func CreateWorkerPool(limit int, jobChan chan *Job) {
 
 // EnqueJob ...
 func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) (string, *Job) {
-	job := Job{repository, "", branch, "", uuid, "", ""}
+	job := Job{repository, "", branch, "", uuid, "", "", ""}
 	select {
 	case jobChan <- &job:
 		return Queued, &job
@@ -58,9 +59,10 @@ func worker(jobChan chan *Job) {
 }
 
 func process(job *Job) {
-	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
+	path, output, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
 	job.Status = Cloned
+	job.CloneOutput = output
 
 	if err != nil {
 		job.Status = Failed
