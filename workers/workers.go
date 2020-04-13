@@ -39,9 +39,9 @@ type StatusMap map[string]string
 type OutputMap map[string]string
 
 // CreateWorkerPool ...
-func CreateWorkerPool(limit int, jobChan chan *Job, statusMap StatusMap, outputMap OutputMap) {
+func CreateWorkerPool(limit int, jobChan chan *Job, outputMap OutputMap) {
 	for i := 0; i < limit; i++ {
-		go worker(jobChan, statusMap, outputMap)
+		go worker(jobChan, outputMap)
 	}
 }
 
@@ -56,34 +56,27 @@ func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) 
 	}
 }
 
-func worker(jobChan chan *Job, statusMap StatusMap, outputMap OutputMap) {
+func worker(jobChan chan *Job, outputMap OutputMap) {
 	for job := range jobChan {
-		process(job, statusMap, outputMap)
+		process(job, outputMap)
 	}
 }
 
-func process(job *Job, statusMap StatusMap, outputMap OutputMap) {
+func process(job *Job, outputMap OutputMap) {
 	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
 	job.Status = Cloned
-	statusMap[job.UUID] = Cloned
 
 	if err != nil {
-		statusMap[job.UUID] = Failed
 		job.Status = Failed
 	} else {
-		statusMap[job.UUID] = Processing
 		job.Status = Processing
 		status, output, err := docker.RunDockerFile(path, job.UUID)
 		outputMap[job.UUID] = output
 		if err != nil || status == false {
 			job.Status = TestsFailed
-			statusMap[job.UUID] = TestsFailed
 		} else if status == true {
 			job.Status = Completed
-			statusMap[job.UUID] = Completed
 		}
 	}
-
-	job.Status = statusMap[job.UUID]
 }

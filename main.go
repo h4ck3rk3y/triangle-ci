@@ -20,7 +20,6 @@ const (
 	WorkerLimit = 4
 )
 
-var statusMap workers.StatusMap
 var jobMap map[string]*workers.Job
 var outputMap workers.OutputMap
 var jobChan chan *workers.Job
@@ -37,7 +36,6 @@ func newCommitHandler(c *gin.Context) {
 	uuid := git.CreateUUID()
 
 	status, job := workers.EnqueJob(form.Repository, form.Branch, uuid, jobChan)
-	statusMap[uuid] = status
 	jobMap[uuid] = job
 	outputMap[uuid] = ""
 
@@ -53,8 +51,8 @@ func newCommitHandler(c *gin.Context) {
 func statusCheck(c *gin.Context) {
 	id := c.Query("id")
 
-	if status, ok := statusMap[id]; ok {
-		c.JSON(http.StatusOK, gin.H{"status": status})
+	if job, ok := jobMap[id]; ok {
+		c.JSON(http.StatusOK, gin.H{"status": job.Status})
 	} else {
 		c.JSON(http.StatusNotFound, gin.H{"message": "invalid id"})
 		c.Abort()
@@ -104,12 +102,11 @@ func allJobs(c *gin.Context) {
 
 func main() {
 
-	statusMap = make(workers.StatusMap)
 	outputMap = make(workers.OutputMap)
 	jobMap = make(map[string]*workers.Job)
 
 	jobChan = make(chan *workers.Job, JobQueueSize)
-	workers.CreateWorkerPool(WorkerLimit, jobChan, statusMap, outputMap)
+	workers.CreateWorkerPool(WorkerLimit, jobChan, outputMap)
 
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
