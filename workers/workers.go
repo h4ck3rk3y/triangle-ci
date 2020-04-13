@@ -7,17 +7,21 @@ import (
 
 // Job ...
 type Job struct {
-	Repository string `json:"repository_url"`
-	Status     string `json:"status"`
-	Branch     string `json:"branch"`
-	Commit     string `json:"commit"`
-	UUID       string `json:"uuid"`
-	Path       string `json:"path"`
+	Repository  string `json:"repository_url"`
+	Status      string `json:"status"`
+	Branch      string `json:"branch"`
+	Commit      string `json:"commit"`
+	UUID        string `json:"uuid"`
+	Path        string `json:"path"`
+	Output      string `json:"output"`
+	CloneOutput string `json:"clone_output"`
 }
 
 const (
 	// Queued ...
 	Queued string = "Queued"
+	// Cloned ...
+	Cloned string = "Cloned"
 	// Failed ...
 	Failed = "Failed"
 	// Processing ...
@@ -30,53 +34,46 @@ const (
 	TryLater = "Queue is full try later"
 )
 
-// StatusMap ...
-type StatusMap map[string]string
-type jobMap map[string]Job
-
-// OutputMap ...
-type OutputMap map[string]string
-
 // CreateWorkerPool ...
-func CreateWorkerPool(limit int, jobChan chan Job, statusMap StatusMap, outputMap OutputMap) {
+func CreateWorkerPool(limit int, jobChan chan *Job) {
 	for i := 0; i < limit; i++ {
-		go worker(jobChan, statusMap, outputMap)
+		go worker(jobChan)
 	}
 }
 
 // EnqueJob ...
-func EnqueJob(repository string, branch string, uuid string, jobChan chan Job) (string, Job) {
-	job := Job{repository, "", branch, "", uuid, ""}
+func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) (string, *Job) {
+	job := Job{repository, "", branch, "", uuid, "", "", ""}
 	select {
-	case jobChan <- job:
-		return Queued, job
+	case jobChan <- &job:
+		return Queued, &job
 	default:
-		return TryLater, job
+		return TryLater, &job
 	}
 }
 
-func worker(jobChan chan Job, statusMap StatusMap, outputMap OutputMap) {
+func worker(jobChan chan *Job) {
 	for job := range jobChan {
-		process(job, statusMap, outputMap)
+		process(job)
 	}
 }
 
-func process(job Job, statusMap StatusMap, outputMap OutputMap) {
-	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
+func process(job *Job) {
+	path, output, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
+	job.Status = Cloned
+	job.CloneOutput = output
 
 	if err != nil {
-		statusMap[job.UUID] = Failed
+		job.Status = Failed
 	} else {
-		statusMap[job.UUID] = Processing
+		job.Status = Processing
 		status, output, err := docker.RunDockerFile(path, job.UUID)
-		outputMap[job.UUID] = output
+		job.Output = output
 		if err != nil || status == false {
-			statusMap[job.UUID] = TestsFailed
+			job.Status = TestsFailed
 		} else if status == true {
-			statusMap[job.UUID] = Completed
+			job.Status = Completed
 		}
 	}
-
-	job.Status = statusMap[job.UUID]
 }
