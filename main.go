@@ -23,7 +23,7 @@ const (
 var statusMap workers.StatusMap
 var jobMap map[string]*workers.Job
 var outputMap workers.OutputMap
-var jobChan chan workers.Job
+var jobChan chan *workers.Job
 
 func newCommitHandler(c *gin.Context) {
 	var form newCommitForm
@@ -108,7 +108,7 @@ func main() {
 	outputMap = make(workers.OutputMap)
 	jobMap = make(map[string]*workers.Job)
 
-	jobChan = make(chan workers.Job, JobQueueSize)
+	jobChan = make(chan *workers.Job, JobQueueSize)
 	workers.CreateWorkerPool(WorkerLimit, jobChan, statusMap, outputMap)
 
 	r := gin.Default()
