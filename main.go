@@ -73,29 +73,39 @@ func channelSize(c *gin.Context) {
 }
 
 func allRunningJobs(c *gin.Context) {
-	runningJobs := make(map[string]workers.Job)
+	runningJobs := make(map[string]*workers.Job)
 	for k, v := range jobMap {
 		if v.Status == workers.Processing || v.Status == workers.Queued {
-			runningJobs[k] = *v
+			runningJobs[k] = v
 		}
 	}
-
-	c.JSON(http.StatusOK, runningJobs)
+	v := make([]*workers.Job, 0, len(runningJobs))
+	for _, value := range runningJobs {
+		v = append(v, value)
+	}
+	c.JSON(http.StatusOK, v)
 }
 
 func allFinishedJobs(c *gin.Context) {
-	finishedJobs := make(map[string]workers.Job)
+	finishedJobs := make(map[string]*(workers.Job))
 	for k, v := range jobMap {
 		if v.Status != workers.Processing && v.Status != workers.Queued {
-			finishedJobs[k] = *v
+			finishedJobs[k] = v
 		}
 	}
-
-	c.JSON(http.StatusOK, finishedJobs)
+	v := make([]*workers.Job, 0, len(finishedJobs))
+	for _, value := range finishedJobs {
+		v = append(v, value)
+	}
+	c.JSON(http.StatusOK, v)
 }
 
 func allJobs(c *gin.Context) {
-	c.JSON(http.StatusOK, jobMap)
+	v := make([]*workers.Job, 0, len(jobMap))
+	for _, value := range jobMap {
+		v = append(v, value)
+	}
+	c.JSON(http.StatusOK, v)
 }
 
 func main() {

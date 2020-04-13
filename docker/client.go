@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bufio"
 	"errors"
 	"os"
 	"os/exec"
@@ -9,20 +10,25 @@ import (
 )
 
 // RunDockerFile ...
-func RunDockerFile(path string, id string) (passed bool, output string, err error) {
+func RunDockerFile(path string, id string, output *string) (status bool, err error) {
 	os.Chdir(path)
 	_, err = git.GetCIFile(path)
 
 	if err != nil {
-		return false, "", errors.New("invalid file passed")
+		return false, errors.New("invalid file passed")
 	}
 
 	cmd := exec.Command("docker", "build", "-t", id, ".")
-	stdout, err := cmd.Output()
+	stdout, _ := cmd.StdoutPipe()
+	cmd.Start()
 
-	if err != nil {
-		return false, string(stdout), err
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+	var foo string
+	for scanner.Scan() {
+		foo = foo + "\n" + scanner.Text()
+		*output = foo
 	}
-
-	return true, string(stdout), nil
+	cmd.Wait()
+	return true, nil
 }

@@ -68,8 +68,7 @@ func process(job *Job) {
 		job.Status = Failed
 	} else {
 		job.Status = Processing
-		status, output, err := docker.RunDockerFile(path, job.UUID)
-		job.Output = output
+		status, err := docker.RunDockerFile(path, job.UUID, &job.Output)
 		if err != nil || status == false {
 			job.Status = TestsFailed
 		} else if status == true {
