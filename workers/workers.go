@@ -13,6 +13,7 @@ type Job struct {
 	Commit     string `json:"commit"`
 	UUID       string `json:"uuid"`
 	Path       string `json:"path"`
+	Output     string `json:"output"`
 }
 
 const (
@@ -32,22 +33,16 @@ const (
 	TryLater = "Queue is full try later"
 )
 
-// StatusMap ...
-type StatusMap map[string]string
-
-// OutputMap ...
-type OutputMap map[string]string
-
 // CreateWorkerPool ...
-func CreateWorkerPool(limit int, jobChan chan *Job, outputMap OutputMap) {
+func CreateWorkerPool(limit int, jobChan chan *Job) {
 	for i := 0; i < limit; i++ {
-		go worker(jobChan, outputMap)
+		go worker(jobChan)
 	}
 }
 
 // EnqueJob ...
 func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) (string, *Job) {
-	job := Job{repository, "", branch, "", uuid, ""}
+	job := Job{repository, "", branch, "", uuid, "", ""}
 	select {
 	case jobChan <- &job:
 		return Queued, &job
@@ -56,13 +51,13 @@ func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) 
 	}
 }
 
-func worker(jobChan chan *Job, outputMap OutputMap) {
+func worker(jobChan chan *Job) {
 	for job := range jobChan {
-		process(job, outputMap)
+		process(job)
 	}
 }
 
-func process(job *Job, outputMap OutputMap) {
+func process(job *Job) {
 	path, err := git.Clone(job.Repository, job.Branch, job.UUID)
 	job.Path = path
 	job.Status = Cloned
@@ -72,7 +67,7 @@ func process(job *Job, outputMap OutputMap) {
 	} else {
 		job.Status = Processing
 		status, output, err := docker.RunDockerFile(path, job.UUID)
-		outputMap[job.UUID] = output
+		job.Output = output
 		if err != nil || status == false {
 			job.Status = TestsFailed
 		} else if status == true {
