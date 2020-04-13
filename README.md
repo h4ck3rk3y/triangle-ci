@@ -10,4 +10,4 @@ Task Queue
 3. ~Update Statuses live~
 4. Own ci type
 5. Cloning should be within a container as well
-6. Update console output live
+6. ~Update console output live~
