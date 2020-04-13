@@ -32,7 +32,6 @@ const (
 
 // StatusMap ...
 type StatusMap map[string]string
-type jobMap map[string]Job
 
 // OutputMap ...
 type OutputMap map[string]string
@@ -45,13 +44,13 @@ func CreateWorkerPool(limit int, jobChan chan Job, statusMap StatusMap, outputMa
 }
 
 // EnqueJob ...
-func EnqueJob(repository string, branch string, uuid string, jobChan chan Job) (string, Job) {
+func EnqueJob(repository string, branch string, uuid string, jobChan chan Job) (string, *Job) {
 	job := Job{repository, "", branch, "", uuid, ""}
 	select {
 	case jobChan <- job:
-		return Queued, job
+		return Queued, &job
 	default:
-		return TryLater, job
+		return TryLater, &job
 	}
 }
 

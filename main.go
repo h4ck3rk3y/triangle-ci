@@ -38,7 +38,7 @@ func newCommitHandler(c *gin.Context) {
 
 	status, job := workers.EnqueJob(form.Repository, form.Branch, uuid, jobChan)
 	statusMap[uuid] = status
-	jobMap[uuid] = &job
+	jobMap[uuid] = job
 	outputMap[uuid] = ""
 
 	if status == workers.Queued {
