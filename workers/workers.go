@@ -3,6 +3,7 @@ package workers
 import (
 	"github.com/h4ck3rk3y/triangle-ci/docker"
 	"github.com/h4ck3rk3y/triangle-ci/git"
+	"github.com/h4ck3rk3y/triangle-ci/parser"
 )
 
 // Job ...
@@ -32,6 +33,8 @@ const (
 	Completed = "Completed"
 	// TryLater ...
 	TryLater = "Queue is full try later"
+	// InvalidYAML ...
+	InvalidYAML = "Please check the triangle.yml and try again"
 )
 
 // CreateWorkerPool ...
@@ -68,11 +71,16 @@ func process(job *Job) {
 		job.Status = Failed
 	} else {
 		job.Status = Processing
-		status, err := docker.RunDockerFile(path, job.UUID, &job.Output)
-		if err != nil || status == false {
-			job.Status = TestsFailed
-		} else if status == true {
-			job.Status = Completed
+		err = parser.ConvertYAMLToDockerfile(job.Path)
+		if err != nil {
+			job.Status = InvalidYAML
+		} else {
+			status, err := docker.RunDockerFile(path, job.UUID, &job.Output)
+			if err != nil || status == false {
+				job.Status = TestsFailed
+			} else if status == true {
+				job.Status = Completed
+			}
 		}
 	}
 }
