@@ -36,6 +36,7 @@ func ConvertYAMLToDockerfile(path string) (err error) {
 
 	dockerFile := fmt.Sprintf("FROM %s\n", dockerYml.DockerImage)
 	dockerFile = dockerFile + "ADD . /ciarea\n"
+	dockerFile = dockerFile + "WORKDIR /ciarea\n"
 	for _, step := range dockerYml.Steps {
 		dockerFile = dockerFile + fmt.Sprintf("RUN %s\n", step.RunCommand)
 	}

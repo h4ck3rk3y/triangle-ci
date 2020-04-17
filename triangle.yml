@@ -1,4 +1,4 @@
 docker-image: golang:1.12-alpine
 steps:
-  - run: go get -v ./
+  - run: go get -v .
   - run: go build main.go
