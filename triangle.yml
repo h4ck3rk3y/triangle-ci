@@ -1,4 +1,6 @@
 docker-image: golang:1.12-alpine
 steps:
+  - run: apk update
+  - run: apk add git
   - run: go get -v .
   - run: go build main.go

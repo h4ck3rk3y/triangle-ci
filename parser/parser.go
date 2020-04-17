@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 
 	"github.com/ghodss/yaml"
 )
@@ -19,7 +20,7 @@ type StepStruct struct {
 }
 
 // ConvertYAMLToDockerfile ...
-func ConvertYAMLToDockerfile(path string) (err error) {
+func ConvertYAMLToDockerfile(path string, repo string) (err error) {
 	ciPath := path + "/triangle.yml"
 
 	readFile, err := ioutil.ReadFile(ciPath)
@@ -35,8 +36,18 @@ func ConvertYAMLToDockerfile(path string) (err error) {
 	}
 
 	dockerFile := fmt.Sprintf("FROM %s\n", dockerYml.DockerImage)
-	dockerFile = dockerFile + "ADD . /ciarea\n"
-	dockerFile = dockerFile + "WORKDIR /ciarea\n"
+
+	parsedRepo, err := url.Parse(repo)
+
+	if err != nil {
+		return err
+	}
+
+	workpath := fmt.Sprintf("/go/src/%s%s", parsedRepo.Host, parsedRepo.Path)
+
+	dockerFile = dockerFile + fmt.Sprintf("ADD . %s\n", workpath)
+	dockerFile = dockerFile + fmt.Sprintf("WORKDIR %s\n", workpath)
+
 	for _, step := range dockerYml.Steps {
 		dockerFile = dockerFile + fmt.Sprintf("RUN %s\n", step.RunCommand)
 	}

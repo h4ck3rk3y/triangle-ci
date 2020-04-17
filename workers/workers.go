@@ -71,7 +71,7 @@ func process(job *Job) {
 		job.Status = Failed
 	} else {
 		job.Status = Processing
-		err = parser.ConvertYAMLToDockerfile(job.Path)
+		err = parser.ConvertYAMLToDockerfile(job.Path, job.Repository)
 		if err != nil {
 			job.Status = InvalidYAML
 		} else {
