@@ -1,0 +1,19 @@
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <title>Triangle CI</title>
+    </head>
+    <body id="output" name="output">
+    </body>
+    <script>
+        setInterval(function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            uuid = urlParams.get('id')
+            $.getJSON("http://localhost:8080/output?id=" + uuid, function(data){
+                $("#output").html(
+                    data.output.replace(/\n/g, "<br />")
+                )
+            })
+        }, 1000)
+    </script>
+</html>
