@@ -130,5 +130,6 @@ func main() {
 	r.GET("/all", allJobs)
 	r.LoadHTMLFiles("static/*")
 	r.StaticFile("/ui/all", "static/status.html")
+	r.StaticFile("/ui/output", "static/output.html")
 	r.Run()
 }
