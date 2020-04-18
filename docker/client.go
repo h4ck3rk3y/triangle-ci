@@ -28,6 +28,9 @@ func RunDockerFile(path string, id string, output *string) (status bool, err err
 		foo = foo + "\n" + scanner.Text()
 		*output = foo
 	}
-	cmd.Wait()
+	err = cmd.Wait()
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
