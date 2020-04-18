@@ -128,5 +128,7 @@ func main() {
 	r.GET("/finished", allFinishedJobs)
 	r.GET("/pending", allRunningJobs)
 	r.GET("/all", allJobs)
+	r.LoadHTMLFiles("static/*")
+	r.StaticFile("/ui/all", "static/status.html")
 	r.Run()
 }
