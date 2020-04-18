@@ -1,0 +1,32 @@
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <title>Triangle CI</title>
+    </head>
+    <body>
+        <table name="status-table" id="status-table">
+        </table>
+    </body>
+    <script>
+        window.setInterval(function() {
+        $.getJSON("http://localhost:8080/all", function(data) {
+            var items = []
+            $('#status-table').empty()
+            $("#status-table").append('<tr><th alight="left">id</th><th align="left">repository</th><th align="left">status</th><th align/>branch</th></tr>')
+            $.each(data, function(key, value) {
+                items.push({id: value.uuid, status: value.status, repo: value.repository_url, branch: value.branch})
+            })
+            items.sort(function(a,b) {
+                if (a.id < b.id)
+                    return -1
+                if (a.id > b.id)
+                    return 1
+            })
+            $.each(items, function(key, value){
+                $("#status-table").append(
+                    '<tr><td><a href="http://localhost:8080/ui/output?id=' + value.id+ '">' + value.id + '</a></td><td>' + value.repo +'</td><td>'+ value.status + '</td><td>' + value.branch + '</td></tr>'
+                )
+            })
+        })}, 1000)
+    </script>
+</html>

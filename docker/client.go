@@ -3,7 +3,6 @@ package docker
 import (
 	"bufio"
 	"errors"
-	"os"
 	"os/exec"
 
 	"github.com/h4ck3rk3y/triangle-ci/git"
@@ -11,7 +10,6 @@ import (
 
 // RunDockerFile ...
 func RunDockerFile(path string, id string, output *string) (status bool, err error) {
-	os.Chdir(path)
 	_, err = git.GetCIFile(path)
 
 	if err != nil {
@@ -19,6 +17,7 @@ func RunDockerFile(path string, id string, output *string) (status bool, err err
 	}
 
 	cmd := exec.Command("docker", "build", "-t", id, ".")
+	cmd.Dir = path
 	stdout, _ := cmd.StdoutPipe()
 	cmd.Start()
 
