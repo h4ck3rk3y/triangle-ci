@@ -11,6 +11,7 @@ import (
 type newCommitForm struct {
 	Repository string `json:"repository_url"`
 	Branch     string `json:"branch"`
+	Host       bool   `json:"host" form:"host,default=false"`
 }
 
 const (
@@ -34,7 +35,7 @@ func newCommitHandler(c *gin.Context) {
 
 	uuid := git.CreateUUID()
 
-	status, job := workers.EnqueJob(form.Repository, form.Branch, uuid, jobChan)
+	status, job := workers.EnqueJob(form.Repository, form.Branch, uuid, form.Host, jobChan)
 	jobMap[uuid] = job
 
 	if status == workers.Queued {

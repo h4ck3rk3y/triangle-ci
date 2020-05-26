@@ -16,6 +16,7 @@ type Job struct {
 	Path        string `json:"path"`
 	Output      string `json:"output"`
 	CloneOutput string `json:"clone_output"`
+	Host        bool   `json:"host"`
 }
 
 const (
@@ -35,6 +36,8 @@ const (
 	TryLater = "Queue is full try later"
 	// InvalidYAML ...
 	InvalidYAML = "Invalid YAML"
+	// Hosting ...
+	Hosting = "Hosting"
 )
 
 // CreateWorkerPool ...
@@ -45,8 +48,8 @@ func CreateWorkerPool(limit int, jobChan chan *Job) {
 }
 
 // EnqueJob ...
-func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) (string, *Job) {
-	job := Job{repository, "", branch, "", uuid, "", "", ""}
+func EnqueJob(repository string, branch string, uuid string, host bool, jobChan chan *Job) (string, *Job) {
+	job := Job{repository, "", branch, "", uuid, "", "", "", host}
 	select {
 	case jobChan <- &job:
 		return Queued, &job
@@ -57,7 +60,11 @@ func EnqueJob(repository string, branch string, uuid string, jobChan chan *Job) 
 
 func worker(jobChan chan *Job) {
 	for job := range jobChan {
-		process(job)
+		if job.Host {
+			processHost(job)
+		} else {
+			process(job)
+		}
 	}
 }
 
@@ -81,6 +88,25 @@ func process(job *Job) {
 			} else if status == true {
 				job.Status = Completed
 			}
+		}
+	}
+}
+
+func processHost(job *Job) {
+	path, output, err := git.Clone(job.Repository, job.Branch, job.UUID)
+	job.Path = path
+	job.Status = Cloned
+	job.CloneOutput = output
+
+	if err != nil {
+		job.Status = Failed
+	} else {
+		job.Status = Hosting
+		status, err := docker.ComposeUp(path, job.UUID, &job.Output)
+		if err != nil || status == false {
+			job.Status = Failed
+		} else if status == true {
+			job.Status = Completed
 		}
 	}
 }

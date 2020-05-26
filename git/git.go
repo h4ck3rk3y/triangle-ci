@@ -49,6 +49,17 @@ func GetCIFile(path string) (dockerfile string, err error) {
 	return path, err
 }
 
+// GetDockerComposeFile ...
+func GetDockerComposeFile(path string) (dockerComposeFile string, err error) {
+	path = path + "/docker-compose.yml"
+	_, err = os.Open(path)
+	if err != nil {
+		log.Fatal("no docker compose found")
+		return "", err
+	}
+	return path, err
+}
+
 // CreateUUID ...
 func CreateUUID() string {
 	b := make([]byte, 16)
